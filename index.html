@@ -115,7 +115,7 @@ textarea#dialogueText {
     gap: 15px;
     margin-top: 10px;
 }
-button { 
+button {
     flex: 1;
     background: #4a0000;
     color: #ffcc00;
@@ -144,6 +144,23 @@ button.secondary { background: #4a4133; color: #fcf5e5; border-color: #322c26; }
 .search-results.active { display: block; }
 .item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-size: 13px; }
 .item:hover { background: #f0e6d2; }
+
+/* Footer style */
+footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 13px;
+    border-top: 1px solid #4a4133;
+    padding-top: 20px;
+}
+footer a {
+    color: #4a0000;
+    text-decoration: none;
+    font-weight: bold;
+}
+footer a:hover {
+    text-decoration: underline;
+}
 </style>
 </head>
 <body>
@@ -184,6 +201,10 @@ button.secondary { background: #4a4133; color: #fcf5e5; border-color: #322c26; }
             <button id="exportBtn">Export High-Res PNG</button>
         </div>
     </div>
+
+    <footer>
+        <a href="https://github.com/xo-xo-xo-xo/osrs-dialogue" target="_blank">source</a>
+    </footer>
 </div>
 <script>
 const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
@@ -198,34 +219,41 @@ ctx.imageSmoothingEnabled = false;
 
 async function searchNPCs(query){
     if(query.length < 2) return;
-
-
     const cleanQuery = query.trim();
 
-    const resp = await fetch(`${WIKI_API}?action=query&list=allimages&format=json&origin=*&aiprop=url&aiprefix=${encodeURIComponent(cleanQuery)}&ailimit=25`);
+    // Improved search logic to find names like King Roald and Yama properly
+    const searchUrl = `${WIKI_API}?action=query&list=search&srsearch=file:${encodeURIComponent(cleanQuery)}+chathead&srnamespace=6&format=json&origin=*&srlimit=50`;
+
+    const resp = await fetch(searchUrl);
     const data = await resp.json();
     const res = document.getElementById('searchResults');
     res.innerHTML = '';
 
-
-    const images = (data.query.allimages||[]).filter(img =>
-        img.name.toLowerCase().includes('chathead') &&
-        img.name.toLowerCase().includes(cleanQuery.toLowerCase().replace(/ /g, '_'))
-    );
-
-    if(images.length > 0) {
+    if(data.query && data.query.search.length > 0) {
         res.classList.add('active');
-        images.forEach(img => {
-            const div = document.createElement('div'); div.className = 'item';
-            const nameClean = img.name.replace(/_chathead\.png/gi, '').replace(/_/g, ' ');
-            div.innerHTML = `<span>${nameClean}</span><span style="color:#800000; font-size:10px;">Select Variant</span>`;
-            div.onclick = () => {
-                currentNPC = nameClean.split(' (')[0];
-                currentVariant = img.url;
-                res.classList.remove('active');
-                generatePreview();
-            };
-            res.appendChild(div);
+        const titles = data.query.search.map(item => item.title).join('|');
+        const imageInfoResp = await fetch(`${WIKI_API}?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url&format=json&origin=*`);
+        const infoData = await imageInfoResp.json();
+        const pages = infoData.query.pages;
+
+        Object.values(pages).forEach(page => {
+            if (page.imageinfo && page.imageinfo[0]) {
+                const url = page.imageinfo[0].url;
+                const fileName = page.title.replace('File:', '');
+                const nameClean = fileName.replace(/_chathead\.png/gi, '').replace(/chathead\.png/gi, '').replace(/_/g, ' ').trim();
+
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<span>${nameClean}</span><span style="color:#800000; font-size:10px;">Select</span>`;
+
+                div.onclick = () => {
+                    currentNPC = nameClean.split(' (')[0];
+                    currentVariant = url;
+                    res.classList.remove('active');
+                    generatePreview();
+                };
+                res.appendChild(div);
+            }
         });
     }
 }
