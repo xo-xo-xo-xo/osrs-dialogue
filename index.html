@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OSRS dialogue generator</title>
+<style>
+@font-face {
+    font-family: 'RuneScapeQuill';
+    src: url('assets/fonts/RuneScape-Quill-8.ttf') format('truetype');
+}
+body {
+    background: #000 url('https://www.runescape.com/img/main/layout/bg-body.jpg') repeat-y center top;
+    color: #322c26;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 60px 0;
+    display: flex;
+    justify-content: center;
+}
+.page-container {
+    width: 850px;
+    background: #fcf5e5 url('https://www.runescape.com/img/main/layout/bg-content-center.jpg') repeat;
+    border: 3px solid #4a4133;
+    box-shadow: 0 0 40px rgba(0,0,0,0.9);
+    padding: 40px;
+    border-radius: 2px;
+}
+h1 {
+    color: #4a0000;
+    text-align: center;
+    border-bottom: 2px solid #4a4133;
+    padding-bottom: 15px;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+.system-msg {
+    background: #fffef0;
+    border: 1px solid #4a4133;
+    padding: 10px;
+    margin-bottom: 25px;
+    font-size: 13px;
+    color: #4a0000;
+    text-align: center;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+    line-height: 1.4;
+}
+#dialogueCanvas {
+    display: block;
+    margin: 0 auto 40px auto;
+    image-rendering: pixelated;
+    border: 5px solid #322c26;
+    background: #000;
+    width: 519px;
+    height: 142px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+.controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    background: rgba(74, 65, 51, 0.05);
+    padding: 25px;
+    border: 1px solid #4a4133;
+}
+.form-group { margin-bottom: 20px; }
+.full-width { grid-column: span 2; }
+label {
+    display: block;
+    font-weight: bold;
+    color: #4a4133;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+input {
+    width: 100%;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #4a4133;
+    color: #322c26;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+textarea#dialogueText {
+    width: 100%;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #4a4133;
+    color: #322c26;
+    font-family: 'RuneScapeQuill', Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.2;
+}
+.slider-container {
+    background: rgba(255,255,255,0.5);
+    padding: 15px;
+    border: 1px solid #dcd1ba;
+    margin-bottom: 10px;
+}
+.slider-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.slider-group span { width: 90px; font-size: 11px; font-weight: bold; color: #666; }
+.slider-group input { width: 150px; height: 4px; cursor: pointer; }
+.button-bank {
+    grid-column: span 2;
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+button {
+    flex: 1;
+    background: #4a0000;
+    color: #ffcc00;
+    border: 2px solid #ffcc00;
+    padding: 15px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+button:hover { background: #600000; color: #fff; transform: translateY(-1px); }
+button.secondary { background: #4a4133; color: #fcf5e5; border-color: #322c26; }
+.search-results {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #fff;
+    border: 2px solid #4a4133;
+    display: none;
+    position: absolute;
+    width: 350px;
+    z-index: 100;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+.search-results.active { display: block; }
+.item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-size: 13px; }
+.item:hover { background: #f0e6d2; }
+</style>
+</head>
+<body>
+<div class="page-container">
+    <h1>OSRS Dialogue Generator</h1>
+    <div class="system-msg">
+        <strong>precision:</strong> the preview image may look different from the exported image due to browser rendering.
+    </div>
+    <canvas id="dialogueCanvas"></canvas>
+    <div class="controls-grid">
+        <div class="form-group full-width">
+            <label>chathead</label>
+            <input type="text" id="npcSearch" placeholder="search for chatheads">
+            <div id="searchResults" class="search-results"></div>
+        </div>
+        <div class="form-group">
+            <label>dialogue</label>
+            <textarea id="dialogueText" rows="8">enter your text..</textarea>
+        </div>
+        <div class="form-group">
+            <label>Adjustments</label>
+            <div class="slider-container">
+                <label style="font-size: 9px; opacity: 0.6;">Text & Spacing</label>
+                <div class="slider-group"><span>Center X</span><input type="range" id="adjX" min="200" max="400" value="300"></div>
+                <div class="slider-group"><span>Start Y</span><input type="range" id="adjY" min="30" max="100" value="64"></div>
+                <div class="slider-group"><span>Line Height</span><input type="range" id="adjLH" min="10" max="30" value="18"></div>
+                <div class="slider-group"><span>Prompt Y</span><input type="range" id="adjPromptY" min="100" max="135" value="113"></div>
+            </div>
+            <div class="slider-container">
+                <label style="font-size: 9px; opacity: 0.6;">Chathead Offset</label>
+                <div class="slider-group"><span>X Position</span><input type="range" id="headX" min="0" max="100" value="24"></div>
+                <div class="slider-group"><span>Y Position</span><input type="range" id="headY" min="0" max="50" value="22"></div>
+                <div class="slider-group"><span>Size Scale</span><input type="range" id="headScale" min="50" max="150" value="92"></div>
+            </div>
+        </div>
+        <div class="button-bank">
+            <button class="secondary" id="resetBtn">Reset to Defaults</button>
+            <button id="exportBtn">Export High-Res PNG</button>
+        </div>
+    </div>
+</div>
+<script>
+const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
+const BLANK_CHATBOX = 'https://oldschool.runescape.wiki/images/Blank_chatbox.png';
+const CHATBOX_WIDTH = 519, CHATBOX_HEIGHT = 142;
+const DEFAULTS = { adjX: 300, adjY: 64, adjLH: 18, adjPromptY: 113, headX: 24, headY: 22, headScale: 92 };
+let currentVariant = null, currentNPC = null, blankChatboxImg = null;
+const canvas = document.getElementById('dialogueCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CHATBOX_WIDTH; canvas.height = CHATBOX_HEIGHT;
+ctx.imageSmoothingEnabled = false;
+async function searchNPCs(query){
+    if(query.length < 2) return;
+    const resp = await fetch(`${WIKI_API}?action=query&list=allimages&format=json&origin=*&aiprop=url&aiprefix=${encodeURIComponent(query)}&ailimit=15`);
+    const data = await resp.json();
+    const res = document.getElementById('searchResults');
+    res.innerHTML = '';
+    const images = (data.query.allimages||[]).filter(img => img.name.toLowerCase().includes('chathead'));
+    if(images.length > 0) {
+        res.classList.add('active');
+        images.forEach(img => {
+            const div = document.createElement('div'); div.className = 'item';
+            const nameClean = img.name.replace(/_chathead\.png/gi, '').replace(/_/g, ' ');
+            div.innerHTML = `<span>${nameClean}</span><span style="color:#800000; font-size:10px;">Select Variant</span>`;
+            div.onclick = () => {
+                currentNPC = nameClean;
+                currentVariant = img.url;
+                res.classList.remove('active');
+                generatePreview();
+            };
+            res.appendChild(div);
+        });
+    }
+}
+function wrapText(text, maxWidth) {
+    ctx.font = '16px RuneScapeQuill';
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+    for (let n = 0; n < words.length; n++) {
+        let testLine = currentLine + words[n] + ' ';
+        if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+            lines.push(currentLine.trim());
+            currentLine = words[n] + ' ';
+        } else { currentLine = testLine; }
+    }
+    lines.push(currentLine.trim());
+    return lines;
+}
+async function generatePreview(){
+    if(!blankChatboxImg) {
+        blankChatboxImg = new Image(); blankChatboxImg.crossOrigin = 'anonymous'; blankChatboxImg.src = BLANK_CHATBOX;
+        await new Promise(r => blankChatboxImg.onload = r);
+    }
+    ctx.clearRect(0,0,CHATBOX_WIDTH,CHATBOX_HEIGHT);
+    ctx.drawImage(blankChatboxImg, 0, 0);
+    const hX = parseInt(document.getElementById('headX').value);
+    const hY = parseInt(document.getElementById('headY').value);
+    const hS = parseInt(document.getElementById('headScale').value);
+    if(currentVariant){
+        const img = new Image(); img.crossOrigin = 'anonymous'; img.src = currentVariant;
+        await new Promise(r => img.onload = r);
+        const aspect = img.width / img.height;
+        ctx.drawImage(img, hX, hY, Math.floor(hS * aspect), hS);
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = '16px RuneScapeQuill';
+    const tX = parseInt(document.getElementById('adjX').value);
+    const tY = parseInt(document.getElementById('adjY').value);
+    const pY = parseInt(document.getElementById('adjPromptY').value);
+    const lH = parseInt(document.getElementById('adjLH').value);
+    if(currentNPC) {
+        ctx.fillStyle = '#800000';
+        ctx.fillText(currentNPC, tX, 28);
+    }
+    const lines = wrapText(document.getElementById('dialogueText').value, 390);
+    ctx.fillStyle = '#000000';
+    lines.forEach((line, i) => {
+        ctx.fillText(line, tX, Math.floor(tY + (i * lH)));
+    });
+    ctx.fillStyle = '#0000ff';
+    ctx.fillText('Click here to continue', tX, pY);
+}
+document.getElementById('resetBtn').onclick = () => {
+    Object.keys(DEFAULTS).forEach(id => document.getElementById(id).value = DEFAULTS[id]);
+    generatePreview();
+};
+document.getElementById('npcSearch').oninput = e => searchNPCs(e.target.value);
+['dialogueText', 'adjX', 'adjY', 'adjPromptY', 'adjLH', 'headX', 'headY', 'headScale'].forEach(id => {
+    document.getElementById(id).oninput = generatePreview;
+});
+document.getElementById('exportBtn').onclick = () => {
+    const link = document.createElement('a');
+    link.download = `osrs_${currentNPC || 'dialogue'}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+};
+generatePreview();
+</script>
+</body>
+</html>
