@@ -221,7 +221,7 @@ async function searchNPCs(query){
     if(query.length < 2) return;
     const cleanQuery = query.trim();
 
-    // Improved search logic to find names like King Roald and Yama properly
+   
     const searchUrl = `${WIKI_API}?action=query&list=search&srsearch=file:${encodeURIComponent(cleanQuery)}+chathead&srnamespace=6&format=json&origin=*&srlimit=50`;
 
     const resp = await fetch(searchUrl);
